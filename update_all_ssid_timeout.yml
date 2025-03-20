@@ -1,0 +1,25 @@
+- name: Configure session timeout for all SSIDs on Cisco 5508 WLC
+  hosts: wlc
+  gather_facts: no
+  tasks:
+    - name: Get the list of all SSIDs
+      ansible.netcommon.cli_command:
+        command: "show wlan summary"
+      register: wlan_summary
+
+    - name: Extract SSID names
+      set_fact:
+        ssid_list: "{{ wlan_summary.stdout_lines | select('search', '^\\d+\\s+\\S+') | map('split', ' ') | map('first') | list }}"
+
+    - name: Set session timeout for each SSID
+      ansible.netcommon.cli_command:
+        command: "config wlan session-timeout {{ item }} {{ timeout_value }}"
+      loop: "{{ ssid_list }}"
+
+    - name: Save Configuration
+      ansible.netcommon.cli_command:
+        command: "save config"
+
+    - name: Display applied SSID timeouts
+      debug:
+        msg: "Updated session timeout for SSIDs: {{ ssid_list }}"
